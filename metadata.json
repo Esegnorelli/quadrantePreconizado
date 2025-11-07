@@ -1,0 +1,5 @@
+{
+  "name": "Hora do Pastel",
+  "description": "Um aplicativo web para análise de faturamento de lojas, com visualização em quadrantes de desempenho e registro de movimentações. Todos os dados são salvos localmente no seu navegador.",
+  "requestFramePermissions": []
+}
