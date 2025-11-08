@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceArea,
   ResponsiveContainer, Legend, Label, LabelList
 } from 'recharts';
-import { stringToColor } from '../utils/helpers';
+import { stringToColor, truncateName } from '../utils/helpers';
 import { useAppContext } from '../contexts/AppContext';
 import EmptyState from './common/EmptyState';
 import { ChevronUpIcon } from './icons';
+import MultiSelectDropdown from './common/MultiSelectDropdown';
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -56,8 +58,13 @@ const QuadrantePage: React.FC = () => {
   const currentMonth = today.getMonth() + 1;
   
   const [selectedPeriod, setSelectedPeriod] = useState(`${currentYear}-${String(currentMonth).padStart(2, '0')}`);
-  const [selectedLojaIds, setSelectedLojaIds] = useState<string[]>(['all']);
+  const [selectedLojaIds, setSelectedLojaIds] = useState<string[]>([]);
 
+  useEffect(() => {
+    if (lojas.length > 0) {
+      setSelectedLojaIds(lojas.map(l => l.id));
+    }
+  }, [lojas]);
 
   const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -65,11 +72,11 @@ const QuadrantePage: React.FC = () => {
   };
   
   const filteredMovimentacoes = useMemo(() => {
-    if (!selectedPeriod) return [];
+    if (!selectedPeriod || selectedLojaIds.length === 0) return [];
     
     return movimentacoes.filter(mov => {
       const isDateInRange = mov.dataISO.startsWith(selectedPeriod);
-      const isLojaSelected = selectedLojaIds.includes('all') || selectedLojaIds.includes(mov.lojaId);
+      const isLojaSelected = selectedLojaIds.includes(mov.lojaId);
       return isDateInRange && isLojaSelected;
     });
   }, [movimentacoes, selectedPeriod, selectedLojaIds]);
@@ -89,9 +96,11 @@ const QuadrantePage: React.FC = () => {
     return Object.keys(groupedByLoja).map(lojaId => {
       const loja = lojas.find(l => l.id === lojaId);
       const data = groupedByLoja[lojaId];
+      const nomeCompleto = loja ? loja.nome : 'Loja Desconhecida';
       return {
         lojaId,
-        nome: loja ? loja.nome : 'Loja Desconhecida',
+        nome: nomeCompleto,
+        nomeTruncado: truncateName(nomeCompleto, 20),
         faturamento: data.faturamentoSum / data.count,
         preconizado: data.preconizadoSum / data.count,
         count: data.count,
@@ -119,11 +128,6 @@ const QuadrantePage: React.FC = () => {
         critico: chartData.filter(d => d.faturamento < metaFaturamento && d.preconizado < metaPreconizado).length,
     };
   }, [chartData, metaFaturamento, metaPreconizado]);
-
-  const handleLojaSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const values = Array.from(e.target.selectedOptions, option => option.value);
-    setSelectedLojaIds(values);
-  };
   
   const yDomainMax = useMemo(() => Math.max(100, ...chartData.map(d => d.faturamento)) * 1.1, [chartData]);
 
@@ -134,6 +138,17 @@ const QuadrantePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+       {/* Painel de Filtro de Lojas */}
+      <div className="p-6 bg-white rounded-xl shadow-md">
+        <h3 className="text-lg font-bold mb-4">Filtro de Lojas</h3>
+        <MultiSelectDropdown
+          placeholder="Selecione as Lojas"
+          options={lojas.map(loja => ({ value: loja.id, label: loja.nome }))}
+          selected={selectedLojaIds}
+          onChange={setSelectedLojaIds}
+        />
+      </div>
+
       {/* Painel de Controle Retrátil */}
       <div className="bg-white rounded-xl shadow-md">
         <div 
@@ -151,45 +166,43 @@ const QuadrantePage: React.FC = () => {
         <div 
           id="control-panel"
           className={`transition-[max-height,padding] duration-500 ease-in-out overflow-hidden ${isControlsVisible ? 'max-h-[1000px] p-6 pt-0 border-t' : 'max-h-0 p-0'}`}>
-           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-              {/* Filtros */}
-              <div className="space-y-4">
-                  <h4 className="font-bold text-md">Filtros</h4>
-                  <div>
-                      <label htmlFor="period" className="block text-sm font-medium text-gray-700">Período</label>
-                      <input 
-                          type="month" 
-                          id="period" 
-                          value={selectedPeriod} 
-                          onChange={e => setSelectedPeriod(e.target.value)} 
-                          className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+              {/* Coluna de Controles */}
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-bold text-md mb-2">Filtros</h4>
+                  <div className="space-y-4">
+                    <div>
+                        <label htmlFor="period" className="block text-sm font-medium text-gray-700">Período</label>
+                        <input 
+                            type="month" 
+                            id="period" 
+                            value={selectedPeriod} 
+                            onChange={e => setSelectedPeriod(e.target.value)} 
+                            className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+                    </div>
                   </div>
-                  <div>
-                      <label htmlFor="lojas" className="block text-sm font-medium text-gray-700">Lojas</label>
-                      <select id="lojas" multiple value={selectedLojaIds} onChange={handleLojaSelection} className="block w-full h-24 mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                          <option value="all">Todas</option>
-                          {lojas.map(loja => <option key={loja.id} value={loja.id}>{loja.nome}</option>)}
-                      </select>
+                </div>
+                <div>
+                  <h4 className="font-bold text-md mb-2">Metas</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="metaPreconizado" className="block text-sm font-medium text-gray-700">Meta Média Preconizado (%)</label>
+                        <input type="number" name="metaPreconizado" id="metaPreconizado" value={metaPreconizado} min="0" max="100" step="0.1" onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+                    </div>
+                    <div>
+                        <label htmlFor="metaFaturamento" className="block text-sm font-medium text-gray-700">Meta Faturamento (%)</label>
+                        <input type="number" name="metaFaturamento" id="metaFaturamento" value={metaFaturamento} onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+                    </div>
                   </div>
+                </div>
               </div>
 
-               {/* Metas */}
-              <div className="space-y-4">
-                  <h4 className="font-bold text-md">Metas</h4>
-                  <div>
-                      <label htmlFor="metaPreconizado" className="block text-sm font-medium text-gray-700">Meta Média Preconizado (%)</label>
-                      <input type="number" name="metaPreconizado" id="metaPreconizado" value={metaPreconizado} min="0" max="100" step="0.1" onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
-                  </div>
-                  <div>
-                      <label htmlFor="metaFaturamento" className="block text-sm font-medium text-gray-700">Meta Faturamento (%)</label>
-                      <input type="number" name="metaFaturamento" id="metaFaturamento" value={metaFaturamento} onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
-                  </div>
-              </div>
-              
-              {/* Resumo */}
-              <div className="space-y-4 md:col-span-2">
-                  <h4 className="font-bold text-md">Resumo do Período</h4>
-                   <div className="grid grid-cols-2 gap-4">
+              {/* Coluna de Resumo */}
+              <div>
+                <h4 className="font-bold text-md mb-2">Resumo do Período</h4>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 bg-slate-100 rounded-lg">
                           <p className="text-sm text-gray-500">Média Faturamento</p>
                           <p className="text-2xl font-semibold">{summaryData.mediaFaturamento.toFixed(1)}%</p>
@@ -199,44 +212,55 @@ const QuadrantePage: React.FC = () => {
                           <p className="text-2xl font-semibold">{summaryData.mediaPreconizado.toFixed(2)}%</p>
                       </div>
                   </div>
-                  <h5 className="font-medium text-md">Distribuição nos Quadrantes</h5>
-                  <div className="space-y-2 text-sm">
-                     <div className="flex items-center justify-between p-2 rounded-md bg-green-50">
-                          <div className="flex items-center">
-                              <span className="w-3 h-3 mr-2 bg-green-500 rounded-full"></span>
-                              <span>Sucesso</span>
+                  <div>
+                    <h5 className="mb-2 text-sm font-medium text-slate-600">Distribuição nos Quadrantes</h5>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="p-3 border border-green-200 rounded-lg bg-green-50">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <span className="w-3 h-3 mr-2 bg-green-500 rounded-full"></span>
+                                <span className="text-sm font-medium text-green-800">Sucesso</span>
+                            </div>
+                            <span className="text-lg font-bold text-green-900">{summaryData.sucesso}</span>
+                        </div>
+                      </div>
+                      <div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
+                          <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                  <span className="w-3 h-3 mr-2 bg-blue-500 rounded-full"></span>
+                                  <span className="text-sm font-medium text-blue-800">Potencial</span>
+                              </div>
+                              <span className="text-lg font-bold text-blue-900">{summaryData.potencial}</span>
                           </div>
-                          <span className="font-bold">{summaryData.sucesso} lojas</span>
-                     </div>
-                     <div className="flex items-center justify-between p-2 rounded-md bg-blue-50">
-                          <div className="flex items-center">
-                              <span className="w-3 h-3 mr-2 bg-blue-500 rounded-full"></span>
-                              <span>Potencial</span>
+                      </div>
+                      <div className="p-3 border border-yellow-200 rounded-lg bg-yellow-50">
+                          <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                  <span className="w-3 h-3 mr-2 bg-yellow-500 rounded-full"></span>
+                                  <span className="text-sm font-medium text-yellow-800">Risco</span>
+                              </div>
+                              <span className="text-lg font-bold text-yellow-900">{summaryData.risco}</span>
                           </div>
-                          <span className="font-bold">{summaryData.potencial} lojas</span>
-                     </div>
-                     <div className="flex items-center justify-between p-2 rounded-md bg-yellow-50">
-                          <div className="flex items-center">
-                              <span className="w-3 h-3 mr-2 bg-yellow-500 rounded-full"></span>
-                              <span>Risco</span>
+                      </div>
+                      <div className="p-3 border border-red-200 rounded-lg bg-red-50">
+                          <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                  <span className="w-3 h-3 mr-2 bg-red-500 rounded-full"></span>
+                                  <span className="text-sm font-medium text-red-800">Crítico</span>
+                              </div>
+                              <span className="text-lg font-bold text-red-900">{summaryData.critico}</span>
                           </div>
-                          <span className="font-bold">{summaryData.risco} lojas</span>
-                     </div>
-                     <div className="flex items-center justify-between p-2 rounded-md bg-red-50">
-                          <div className="flex items-center">
-                              <span className="w-3 h-3 mr-2 bg-red-500 rounded-full"></span>
-                              <span>Crítico</span>
-                          </div>
-                          <span className="font-bold">{summaryData.critico} lojas</span>
-                     </div>
+                      </div>
+                    </div>
                   </div>
+                </div>
               </div>
            </div>
         </div>
       </div>
 
       {/* Gráfico */}
-      <div className="p-6 bg-white rounded-xl shadow-md h-[calc(100vh-280px)] min-h-[500px]">
+      <div className="p-6 bg-white rounded-xl shadow-md h-[calc(100vh-360px)] min-h-[500px]">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 80, bottom: 40, left: 50 }}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -271,7 +295,7 @@ const QuadrantePage: React.FC = () => {
                     fill={stringToColor(loja.id)}
                     shape="circle"
                 >
-                  <LabelList dataKey="nome" position="right" style={{ fontSize: '10px', fill: 'rgba(0, 0, 0, 0.8)' }} />
+                  <LabelList dataKey="nomeTruncado" position="right" style={{ fontSize: '10px', fill: 'rgba(0, 0, 0, 0.8)' }} />
                 </Scatter>
             ))}
           </ScatterChart>

@@ -25,3 +25,21 @@ export const stringToColor = (str: string): string => {
     }
     return color;
 };
+
+export const truncateName = (name: string, maxLength: number): string => {
+  if (name.length <= maxLength) {
+    return name;
+  }
+
+  // To avoid cutting words in half, we look for the last space within the limit.
+  const substringUptoMaxLength = name.substring(0, maxLength + 1);
+  const lastSpaceIndex = substringUptoMaxLength.lastIndexOf(' ');
+
+  // If a space is found, truncate at the space to avoid cutting words.
+  if (lastSpaceIndex > 0) {
+    return `${name.substring(0, lastSpaceIndex).trim()}...`;
+  }
+  
+  // Otherwise (e.g., a very long single word), do a hard cut at the original maxLength.
+  return `${name.substring(0, maxLength).trim()}...`;
+};

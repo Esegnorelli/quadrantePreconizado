@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Movimentacao } from '../types';
 import { formatDate } from '../utils/helpers';
 import { EditIcon, DeleteIcon, PlusIcon } from './icons';
@@ -6,6 +6,7 @@ import MovimentacaoModal from './MovimentacaoModal';
 import { useAppContext } from '../contexts/AppContext';
 import ConfirmationModal from './common/ConfirmationModal';
 import EmptyState from './common/EmptyState';
+import MultiSelectDropdown from './common/MultiSelectDropdown';
 
 const RegistrosPage: React.FC = () => {
   const { lojas, movimentacoes, addMovimentacao, updateMovimentacao, deleteMovimentacao } = useAppContext();
@@ -15,7 +16,7 @@ const RegistrosPage: React.FC = () => {
   const currentMonth = today.getMonth() + 1;
   
   const [selectedPeriod, setSelectedPeriod] = useState(`${currentYear}-${String(currentMonth).padStart(2, '0')}`);
-  const [selectedLojaIds, setSelectedLojaIds] = useState<string[]>(['all']);
+  const [selectedLojaIds, setSelectedLojaIds] = useState<string[]>([]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMov, setEditingMov] = useState<Movimentacao | null>(null);
@@ -23,17 +24,23 @@ const RegistrosPage: React.FC = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [movToDelete, setMovToDelete] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (lojas.length > 0) {
+      setSelectedLojaIds(lojas.map(l => l.id));
+    }
+  }, [lojas]);
+
   const getLojaName = (lojaId: string) => {
     return lojas.find(l => l.id === lojaId)?.nome || 'N/A';
   };
 
   const filteredMovimentacoes = useMemo(() => {
-    if (!selectedPeriod) return [];
+    if (!selectedPeriod || selectedLojaIds.length === 0) return [];
 
     return movimentacoes
       .filter(mov => {
         const isDateInRange = mov.dataISO.startsWith(selectedPeriod);
-        const isLojaSelected = selectedLojaIds.includes('all') || selectedLojaIds.includes(mov.lojaId);
+        const isLojaSelected = selectedLojaIds.includes(mov.lojaId);
         return isDateInRange && isLojaSelected;
       })
       .sort((a, b) => new Date(b.dataISO).getTime() - new Date(a.dataISO).getTime());
@@ -70,15 +77,6 @@ const RegistrosPage: React.FC = () => {
     }
     setIsModalOpen(false);
   };
-  
-  const handleLojaSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const values = Array.from(e.target.selectedOptions, option => option.value);
-    if (values.includes('all') || values.length === 0) {
-        setSelectedLojaIds(['all']);
-    } else {
-        setSelectedLojaIds(values);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -98,10 +96,12 @@ const RegistrosPage: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="lojaFilter" className="block text-sm font-medium text-gray-700">Loja</label>
-                <select id="lojaFilter" multiple value={selectedLojaIds} onChange={handleLojaSelection} className="block w-full h-24 mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                  <option value="all">Todas</option>
-                  {lojas.map(loja => <option key={loja.id} value={loja.id}>{loja.nome}</option>)}
-                </select>
+                <MultiSelectDropdown
+                  placeholder="Selecione as Lojas"
+                  options={lojas.map(loja => ({ value: loja.id, label: loja.nome }))}
+                  selected={selectedLojaIds}
+                  onChange={setSelectedLojaIds}
+                />
               </div>
             </div>
         </div>
