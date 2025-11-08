@@ -6,13 +6,14 @@ import {
 import { stringToColor } from '../utils/helpers';
 import { useAppContext } from '../contexts/AppContext';
 import EmptyState from './common/EmptyState';
+import { ChevronUpIcon } from './icons';
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const loja = payload[0];
     return (
-      <div className="relative z-50 p-3 text-sm bg-white border rounded-md shadow-lg">
+      <div className="relative z-50 p-3 text-sm bg-white border rounded-lg shadow-lg">
         <p className="font-bold" style={{ color: loja.fill }}>{data.nome}</p>
         <p>Faturamento Médio: {data.faturamento.toFixed(1)}%</p>
         <p>Preconizado Médio: {data.preconizado.toFixed(1)}%</p>
@@ -47,12 +48,16 @@ const QuadrantLabel = ({ value, viewBox, color }: { value: string, viewBox?: { x
 
 const QuadrantePage: React.FC = () => {
   const { lojas, movimentacoes, settings, updateSettings } = useAppContext();
+  
+  const [isControlsVisible, setIsControlsVisible] = useState(true);
 
   const today = new Date();
-  const currentMonth = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
   
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedPeriod, setSelectedPeriod] = useState(`${currentYear}-${String(currentMonth).padStart(2, '0')}`);
   const [selectedLojaIds, setSelectedLojaIds] = useState<string[]>(['all']);
+
 
   const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -60,13 +65,14 @@ const QuadrantePage: React.FC = () => {
   };
   
   const filteredMovimentacoes = useMemo(() => {
-    if (!selectedMonth) return [];
+    if (!selectedPeriod) return [];
+    
     return movimentacoes.filter(mov => {
-      const isDateInRange = mov.dataISO.startsWith(selectedMonth);
+      const isDateInRange = mov.dataISO.startsWith(selectedPeriod);
       const isLojaSelected = selectedLojaIds.includes('all') || selectedLojaIds.includes(mov.lojaId);
       return isDateInRange && isLojaSelected;
     });
-  }, [movimentacoes, selectedMonth, selectedLojaIds]);
+  }, [movimentacoes, selectedPeriod, selectedLojaIds]);
 
   const chartData = useMemo(() => {
     const groupedByLoja: { [key: string]: { faturamentoSum: number; preconizadoSum: number; count: number } } = {};
@@ -108,8 +114,8 @@ const QuadrantePage: React.FC = () => {
         mediaFaturamento: totalCount > 0 ? totalFaturamentoSum / totalCount : 0,
         mediaPreconizado: totalCount > 0 ? totalPreconizadoSum / totalCount : 0,
         sucesso: chartData.filter(d => d.faturamento >= metaFaturamento && d.preconizado >= metaPreconizado).length,
-        potencial: chartData.filter(d => d.faturamento < metaFaturamento && d.preconizado >= metaPreconizado).length,
-        risco: chartData.filter(d => d.faturamento >= metaFaturamento && d.preconizado < metaPreconizado).length,
+        potencial: chartData.filter(d => d.faturamento >= metaFaturamento && d.preconizado < metaPreconizado).length,
+        risco: chartData.filter(d => d.faturamento < metaFaturamento && d.preconizado >= metaPreconizado).length,
         critico: chartData.filter(d => d.faturamento < metaFaturamento && d.preconizado < metaPreconizado).length,
     };
   }, [chartData, metaFaturamento, metaPreconizado]);
@@ -128,84 +134,109 @@ const QuadrantePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="p-4 bg-white border rounded-lg shadow-sm">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Coluna de Filtros e Metas */}
-            <div className="space-y-4">
-                <h3 className="text-lg font-medium">Filtros e Metas</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label htmlFor="month" className="block text-sm font-medium text-gray-700">Período</label>
-                        <input type="month" id="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
-                    </div>
-                    <div>
-                        <label htmlFor="lojas" className="block text-sm font-medium text-gray-700">Lojas</label>
-                        <select id="lojas" multiple value={selectedLojaIds} onChange={handleLojaSelection} className="block w-full h-24 mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
-                        <option value="all">Todas</option>
-                        {lojas.map(loja => <option key={loja.id} value={loja.id}>{loja.nome}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="metaPreconizado" className="block text-sm font-medium text-gray-700">Meta Preconizado (%)</label>
-                        <input type="number" name="metaPreconizado" id="metaPreconizado" value={metaPreconizado} min="0" max="100" step="0.1" onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
-                    </div>
-                    <div>
-                        <label htmlFor="metaFaturamento" className="block text-sm font-medium text-gray-700">Meta Faturamento (%)</label>
-                        <input type="number" name="metaFaturamento" id="metaFaturamento" value={metaFaturamento} onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
-                    </div>
-                </div>
-            </div>
-            {/* Coluna de Resumo */}
-            <div className="space-y-4">
-                <h3 className="text-lg font-medium">Resumo do Período</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="p-4 bg-slate-100 rounded-lg">
-                        <p className="text-sm text-gray-500">Média Geral de Faturamento</p>
-                        <p className="text-2xl font-semibold">{summaryData.mediaFaturamento.toFixed(1)}%</p>
-                    </div>
-                    <div className="p-4 bg-slate-100 rounded-lg">
-                        <p className="text-sm text-gray-500">Média Geral de Preconizado</p>
-                        <p className="text-2xl font-semibold">{summaryData.mediaPreconizado.toFixed(1)}%</p>
-                    </div>
-                </div>
-                <div>
-                    <h4 className="font-medium text-md">Distribuição nos Quadrantes</h4>
-                    <div className="mt-2 space-y-2 text-sm">
-                       <div className="flex items-center justify-between p-2 rounded-md bg-green-50">
-                            <div className="flex items-center">
-                                <span className="w-3 h-3 mr-2 bg-green-500 rounded-full"></span>
-                                <span>Sucesso</span>
-                            </div>
-                            <span className="font-bold">{summaryData.sucesso} lojas</span>
-                       </div>
-                       <div className="flex items-center justify-between p-2 rounded-md bg-blue-50">
-                            <div className="flex items-center">
-                                <span className="w-3 h-3 mr-2 bg-blue-500 rounded-full"></span>
-                                <span>Potencial</span>
-                            </div>
-                            <span className="font-bold">{summaryData.potencial} lojas</span>
-                       </div>
-                       <div className="flex items-center justify-between p-2 rounded-md bg-yellow-50">
-                            <div className="flex items-center">
-                                <span className="w-3 h-3 mr-2 bg-yellow-500 rounded-full"></span>
-                                <span>Risco</span>
-                            </div>
-                            <span className="font-bold">{summaryData.risco} lojas</span>
-                       </div>
-                       <div className="flex items-center justify-between p-2 rounded-md bg-red-50">
-                            <div className="flex items-center">
-                                <span className="w-3 h-3 mr-2 bg-red-500 rounded-full"></span>
-                                <span>Crítico</span>
-                            </div>
-                            <span className="font-bold">{summaryData.critico} lojas</span>
-                       </div>
-                    </div>
-                </div>
-            </div>
+      {/* Painel de Controle Retrátil */}
+      <div className="bg-white rounded-xl shadow-md">
+        <div 
+          className="flex items-center justify-between p-6 transition-colors duration-200 cursor-pointer hover:bg-slate-50"
+          onClick={() => setIsControlsVisible(!isControlsVisible)}
+          role="button"
+          aria-expanded={isControlsVisible}
+          aria-controls="control-panel"
+        >
+          <h3 className="text-lg font-bold">Controles e Resumo</h3>
+          <button className="p-1 rounded-full hover:bg-slate-200" title={isControlsVisible ? "Ocultar Controles" : "Mostrar Controles"}>
+            <ChevronUpIcon className={`w-5 h-5 text-slate-600 transition-transform duration-300 ${!isControlsVisible && 'rotate-180'}`}/>
+          </button>
+        </div>
+        <div 
+          id="control-panel"
+          className={`transition-[max-height,padding] duration-500 ease-in-out overflow-hidden ${isControlsVisible ? 'max-h-[1000px] p-6 pt-0 border-t' : 'max-h-0 p-0'}`}>
+           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {/* Filtros */}
+              <div className="space-y-4">
+                  <h4 className="font-bold text-md">Filtros</h4>
+                  <div>
+                      <label htmlFor="period" className="block text-sm font-medium text-gray-700">Período</label>
+                      <input 
+                          type="month" 
+                          id="period" 
+                          value={selectedPeriod} 
+                          onChange={e => setSelectedPeriod(e.target.value)} 
+                          className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+                  </div>
+                  <div>
+                      <label htmlFor="lojas" className="block text-sm font-medium text-gray-700">Lojas</label>
+                      <select id="lojas" multiple value={selectedLojaIds} onChange={handleLojaSelection} className="block w-full h-24 mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm">
+                          <option value="all">Todas</option>
+                          {lojas.map(loja => <option key={loja.id} value={loja.id}>{loja.nome}</option>)}
+                      </select>
+                  </div>
+              </div>
+
+               {/* Metas */}
+              <div className="space-y-4">
+                  <h4 className="font-bold text-md">Metas</h4>
+                  <div>
+                      <label htmlFor="metaPreconizado" className="block text-sm font-medium text-gray-700">Meta Preconizado (%)</label>
+                      <input type="number" name="metaPreconizado" id="metaPreconizado" value={metaPreconizado} min="0" max="100" step="0.1" onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+                  </div>
+                  <div>
+                      <label htmlFor="metaFaturamento" className="block text-sm font-medium text-gray-700">Meta Faturamento (%)</label>
+                      <input type="number" name="metaFaturamento" id="metaFaturamento" value={metaFaturamento} onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+                  </div>
+              </div>
+              
+              {/* Resumo */}
+              <div className="space-y-4 md:col-span-2">
+                  <h4 className="font-bold text-md">Resumo do Período</h4>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-slate-100 rounded-lg">
+                          <p className="text-sm text-gray-500">Média Faturamento</p>
+                          <p className="text-2xl font-semibold">{summaryData.mediaFaturamento.toFixed(1)}%</p>
+                      </div>
+                      <div className="p-4 bg-slate-100 rounded-lg">
+                          <p className="text-sm text-gray-500">Média Preconizado</p>
+                          <p className="text-2xl font-semibold">{summaryData.mediaPreconizado.toFixed(1)}%</p>
+                      </div>
+                  </div>
+                  <h5 className="font-medium text-md">Distribuição nos Quadrantes</h5>
+                  <div className="space-y-2 text-sm">
+                     <div className="flex items-center justify-between p-2 rounded-md bg-green-50">
+                          <div className="flex items-center">
+                              <span className="w-3 h-3 mr-2 bg-green-500 rounded-full"></span>
+                              <span>Sucesso</span>
+                          </div>
+                          <span className="font-bold">{summaryData.sucesso} lojas</span>
+                     </div>
+                     <div className="flex items-center justify-between p-2 rounded-md bg-blue-50">
+                          <div className="flex items-center">
+                              <span className="w-3 h-3 mr-2 bg-blue-500 rounded-full"></span>
+                              <span>Potencial</span>
+                          </div>
+                          <span className="font-bold">{summaryData.potencial} lojas</span>
+                     </div>
+                     <div className="flex items-center justify-between p-2 rounded-md bg-yellow-50">
+                          <div className="flex items-center">
+                              <span className="w-3 h-3 mr-2 bg-yellow-500 rounded-full"></span>
+                              <span>Risco</span>
+                          </div>
+                          <span className="font-bold">{summaryData.risco} lojas</span>
+                     </div>
+                     <div className="flex items-center justify-between p-2 rounded-md bg-red-50">
+                          <div className="flex items-center">
+                              <span className="w-3 h-3 mr-2 bg-red-500 rounded-full"></span>
+                              <span>Crítico</span>
+                          </div>
+                          <span className="font-bold">{summaryData.critico} lojas</span>
+                     </div>
+                  </div>
+              </div>
+           </div>
         </div>
       </div>
-      
-      <div className="p-4 bg-white border rounded-lg shadow-sm h-[calc(100vh-420px)] min-h-[500px]">
+
+      {/* Gráfico */}
+      <div className="p-6 bg-white rounded-xl shadow-md h-[calc(100vh-280px)] min-h-[500px]">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 50 }}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -220,13 +251,9 @@ const QuadrantePage: React.FC = () => {
             <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip />} />
             <Legend verticalAlign="top" height={36}/>
             
-            {/* Quadrante Sucesso (Top-Right) */}
             <ReferenceArea x1={metaPreconizado} y1={metaFaturamento} fill="rgba(74, 222, 128, 0.1)" strokeOpacity={0} label={<QuadrantLabel value="Sucesso" color="#4ade80" />} />
-            {/* Quadrante Risco (Top-Left) */}
-            <ReferenceArea x2={metaPreconizado} y1={metaFaturamento} fill="rgba(250, 204, 21, 0.1)" strokeOpacity={0} label={<QuadrantLabel value="Risco" color="#facc15" />} />
-            {/* Quadrante Potencial (Bottom-Right) */}
-            <ReferenceArea x1={metaPreconizado} y2={metaFaturamento} fill="rgba(59, 130, 246, 0.1)" strokeOpacity={0} label={<QuadrantLabel value="Potencial" color="#60a5fa" />} />
-            {/* Quadrante Crítico (Bottom-Left) */}
+            <ReferenceArea x2={metaPreconizado} y1={metaFaturamento} fill="rgba(59, 130, 246, 0.1)" strokeOpacity={0} label={<QuadrantLabel value="Potencial" color="#60a5fa" />} />
+            <ReferenceArea x1={metaPreconizado} y2={metaFaturamento} fill="rgba(250, 204, 21, 0.1)" strokeOpacity={0} label={<QuadrantLabel value="Risco" color="#facc15" />} />
             <ReferenceArea x2={metaPreconizado} y2={metaFaturamento} fill="rgba(239, 68, 68, 0.1)" strokeOpacity={0} label={<QuadrantLabel value="Crítico" color="#f87171" />} />
 
             <ReferenceLine x={metaPreconizado} stroke="grey" strokeDasharray="3 3">

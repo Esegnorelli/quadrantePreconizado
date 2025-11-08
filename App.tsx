@@ -24,7 +24,7 @@ function App() {
   return (
     <AppContextProvider>
       <ToastProvider />
-      <div className="min-h-screen bg-slate-100 text-slate-800">
+      <div className="min-h-screen bg-slate-50 text-slate-800">
         <Dashboard
           session={session}
           onLogout={handleLogout}

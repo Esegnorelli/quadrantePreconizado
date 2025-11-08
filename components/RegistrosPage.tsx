@@ -7,14 +7,14 @@ import { useAppContext } from '../contexts/AppContext';
 import ConfirmationModal from './common/ConfirmationModal';
 import EmptyState from './common/EmptyState';
 
-
 const RegistrosPage: React.FC = () => {
   const { lojas, movimentacoes, addMovimentacao, updateMovimentacao, deleteMovimentacao } = useAppContext();
   
   const today = new Date();
-  const currentMonth = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
   
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedPeriod, setSelectedPeriod] = useState(`${currentYear}-${String(currentMonth).padStart(2, '0')}`);
   const [selectedLojaIds, setSelectedLojaIds] = useState<string[]>(['all']);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,15 +28,16 @@ const RegistrosPage: React.FC = () => {
   };
 
   const filteredMovimentacoes = useMemo(() => {
-    if (!selectedMonth) return [];
+    if (!selectedPeriod) return [];
+
     return movimentacoes
       .filter(mov => {
-        const isDateInRange = mov.dataISO.startsWith(selectedMonth);
+        const isDateInRange = mov.dataISO.startsWith(selectedPeriod);
         const isLojaSelected = selectedLojaIds.includes('all') || selectedLojaIds.includes(mov.lojaId);
         return isDateInRange && isLojaSelected;
       })
       .sort((a, b) => new Date(b.dataISO).getTime() - new Date(a.dataISO).getTime());
-  }, [movimentacoes, selectedMonth, selectedLojaIds]);
+  }, [movimentacoes, selectedPeriod, selectedLojaIds]);
 
   const handleOpenNewModal = () => {
     setEditingMov(null);
@@ -81,13 +82,19 @@ const RegistrosPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-       <div className="p-4 bg-white border rounded-lg shadow-sm">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <h3 className="text-lg font-medium">Filtros</h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+       <div className="p-6 bg-white rounded-xl shadow-md">
+        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+            <h3 className="text-xl font-bold">Filtros</h3>
+            <div className="grid w-full grid-cols-1 gap-4 md:w-auto md:grid-cols-2">
               <div>
-                <label htmlFor="monthFilter" className="block text-sm font-medium text-gray-700">Período</label>
-                <input type="month" id="monthFilter" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+                  <label htmlFor="periodFilter" className="block text-sm font-medium text-gray-700">Período</label>
+                  <input
+                    type="month"
+                    id="periodFilter"
+                    value={selectedPeriod}
+                    onChange={e => setSelectedPeriod(e.target.value)}
+                    className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm"
+                  />
               </div>
               <div>
                 <label htmlFor="lojaFilter" className="block text-sm font-medium text-gray-700">Loja</label>
@@ -100,9 +107,9 @@ const RegistrosPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-4 bg-white border rounded-lg shadow-sm">
+      <div className="p-6 bg-white rounded-xl shadow-md">
         <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">Lançamentos</h3>
+            <h3 className="text-xl font-bold">Lançamentos</h3>
             <button onClick={handleOpenNewModal} className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white transition-colors duration-200 border border-transparent rounded-md shadow-sm bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                 <PlusIcon className="w-5 h-5 mr-2 -ml-1"/>
                 Novo Lançamento
@@ -115,7 +122,7 @@ const RegistrosPage: React.FC = () => {
         ) : (
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-slate-50">
                         <tr>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Data</th>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Loja</th>
@@ -125,8 +132,8 @@ const RegistrosPage: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredMovimentacoes.map(mov => (
-                            <tr key={mov.id}>
+                        {filteredMovimentacoes.map((mov, index) => (
+                            <tr key={mov.id} className="transition-colors duration-200 even:bg-slate-50 hover:bg-primary/10">
                                 <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{formatDate(mov.dataISO)}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{getLojaName(mov.lojaId)}</td>
                                 <td className="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap">{mov.faturamento.toFixed(1)}%</td>

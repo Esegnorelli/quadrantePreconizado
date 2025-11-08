@@ -79,7 +79,7 @@ const LojaPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="p-6 bg-white rounded-lg shadow-sm">
+      <div className="p-6 bg-white rounded-xl shadow-md">
         <h2 className="text-xl font-bold">Adicionar Nova Loja</h2>
         <form onSubmit={handleAddLoja} className="flex items-center mt-4 space-x-2">
           <input
@@ -95,14 +95,14 @@ const LojaPage: React.FC = () => {
         </form>
       </div>
 
-      <div className="p-6 bg-white rounded-lg shadow-sm">
+      <div className="p-6 bg-white rounded-xl shadow-md">
         <h2 className="text-xl font-bold">Lojas Cadastradas</h2>
         {lojas.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-3">
             {lojas.map(loja => {
               const stats = lojaStats.get(loja.id);
               return (
-                <div key={loja.id} className="flex flex-col justify-between p-4 border border-gray-200 rounded-lg shadow-sm bg-slate-50">
+                <div key={loja.id} className="flex flex-col justify-between p-4 transition-all duration-300 border border-gray-200 rounded-lg shadow-sm bg-slate-50 hover:shadow-md hover:border-primary/50">
                   <div>
                     <div className="flex items-start justify-between">
                       {editingLojaId === loja.id ? (
