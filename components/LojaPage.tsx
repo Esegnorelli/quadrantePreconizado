@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Loja } from '../types';
-import { EditIcon, DeleteIcon, CheckIcon, CancelIcon, PlusIcon } from './icons';
+import { EditIcon, DeleteIcon, CheckIcon, CancelIcon, PlusIcon, ClipboardListIcon, ChartBarIcon, CalendarIcon } from './icons';
 import { useAppContext } from '../contexts/AppContext';
 import ConfirmationModal from './common/ConfirmationModal';
 import EmptyState from './common/EmptyState';
+import { formatDate } from '../utils/helpers';
 
 
 const LojaPage: React.FC = () => {
@@ -15,11 +16,24 @@ const LojaPage: React.FC = () => {
   
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [lojaToDelete, setLojaToDelete] = useState<{id: string, hasMovs: boolean} | null>(null);
+  
+  const lojaStats = useMemo(() => {
+    const stats = new Map<string, { totalLancamentos: number, mediaFaturamento: number, mediaPreconizado: number, ultimoLancamento: string | null }>();
+    lojas.forEach(loja => {
+        const movimentosDaLoja = movimentacoes.filter(m => m.lojaId === loja.id);
+        const totalLancamentos = movimentosDaLoja.length;
+        const mediaFaturamento = totalLancamentos > 0 ? movimentosDaLoja.reduce((acc, mov) => acc + mov.faturamento, 0) / totalLancamentos : 0;
+        const mediaPreconizado = totalLancamentos > 0 ? movimentosDaLoja.reduce((acc, mov) => acc + mov.preconizado, 0) / totalLancamentos : 0;
+        const ultimoLancamento = totalLancamentos > 0 ? new Date(Math.max(...movimentosDaLoja.map(m => new Date(m.dataISO).getTime()))).toISOString().split('T')[0] : null;
+        stats.set(loja.id, { totalLancamentos, mediaFaturamento, mediaPreconizado, ultimoLancamento });
+    });
+    return stats;
+  }, [lojas, movimentacoes]);
 
-  const handleAddLoja = (e: React.FormEvent) => {
+  const handleAddLoja = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newLojaName.trim()) {
-      addLoja(newLojaName);
+      await addLoja(newLojaName);
       setNewLojaName('');
     }
   };
@@ -34,9 +48,9 @@ const LojaPage: React.FC = () => {
     setEditingLojaName('');
   };
 
-  const handleEditSave = (id: string) => {
+  const handleEditSave = async (id: string) => {
     if (editingLojaName.trim()) {
-      updateLoja(id, editingLojaName);
+      await updateLoja(id, editingLojaName);
       handleEditCancel();
     }
   };
@@ -47,9 +61,9 @@ const LojaPage: React.FC = () => {
     setIsConfirmModalOpen(true);
   };
   
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (lojaToDelete) {
-      deleteLoja(lojaToDelete.id);
+      await deleteLoja(lojaToDelete.id);
     }
     setIsConfirmModalOpen(false);
     setLojaToDelete(null);
@@ -64,7 +78,7 @@ const LojaPage: React.FC = () => {
 
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="p-6 bg-white rounded-lg shadow-sm">
         <h2 className="text-xl font-bold">Adicionar Nova Loja</h2>
         <form onSubmit={handleAddLoja} className="flex items-center mt-4 space-x-2">
@@ -83,41 +97,74 @@ const LojaPage: React.FC = () => {
 
       <div className="p-6 bg-white rounded-lg shadow-sm">
         <h2 className="text-xl font-bold">Lojas Cadastradas</h2>
-        <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
-          {lojas.length > 0 ? lojas.map(loja => (
-            <div key={loja.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-              {editingLojaId === loja.id ? (
-                <input
-                  type="text"
-                  value={editingLojaName}
-                  onChange={(e) => setEditingLojaName(e.target.value)}
-                  className="flex-grow mr-2 text-sm border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
-                  autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && handleEditSave(loja.id)}
-                />
-              ) : (
-                <span className="text-sm">{loja.nome}</span>
-              )}
-              
-              <div className="flex items-center space-x-3">
-                {editingLojaId === loja.id ? (
-                  <>
-                    <button onClick={() => handleEditSave(loja.id)} className="text-green-600 hover:text-green-800" title="Salvar"><CheckIcon className="w-5 h-5"/></button>
-                    <button onClick={handleEditCancel} className="text-gray-500 hover:text-gray-700" title="Cancelar"><CancelIcon className="w-5 h-5"/></button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => handleEditStart(loja)} className="text-primary hover:text-primary-dark" title="Editar"><EditIcon className="w-5 h-5"/></button>
-                    <button onClick={() => handleDeleteRequest(loja.id)} className="text-red-600 hover:text-red-900" title="Excluir"><DeleteIcon className="w-5 h-5"/></button>
-                  </>
-                )}
-              </div>
-            </div>
-          )) : (
+        {lojas.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-3">
+            {lojas.map(loja => {
+              const stats = lojaStats.get(loja.id);
+              return (
+                <div key={loja.id} className="flex flex-col justify-between p-4 border border-gray-200 rounded-lg shadow-sm bg-slate-50">
+                  <div>
+                    <div className="flex items-start justify-between">
+                      {editingLojaId === loja.id ? (
+                        <input
+                          type="text"
+                          value={editingLojaName}
+                          onChange={(e) => setEditingLojaName(e.target.value)}
+                          className="w-full mr-2 text-sm border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && handleEditSave(loja.id)}
+                        />
+                      ) : (
+                        <h3 className="pr-2 text-base font-bold text-slate-800">{loja.nome}</h3>
+                      )}
+                      
+                      <div className="flex items-center flex-shrink-0 space-x-3">
+                        {editingLojaId === loja.id ? (
+                          <>
+                            <button onClick={() => handleEditSave(loja.id)} className="text-green-600 hover:text-green-800" title="Salvar"><CheckIcon className="w-5 h-5"/></button>
+                            <button onClick={handleEditCancel} className="text-gray-500 hover:text-gray-700" title="Cancelar"><CancelIcon className="w-5 h-5"/></button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => handleEditStart(loja)} className="text-primary hover:text-primary-dark" title="Editar"><EditIcon className="w-5 h-5"/></button>
+                            <button onClick={() => handleDeleteRequest(loja.id)} className="text-red-600 hover:text-red-900" title="Excluir"><DeleteIcon className="w-5 h-5"/></button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 space-y-2 text-sm text-slate-600">
+                        <div className="flex items-center gap-2">
+                            <ClipboardListIcon className="w-4 h-4 text-slate-400"/>
+                            <span>{stats?.totalLancamentos || 0} lançamentos</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <ChartBarIcon className="w-4 h-4 text-slate-400"/>
+                            <span>Faturamento: {stats?.mediaFaturamento.toFixed(1) || '0.0'}%</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <ChartBarIcon className="w-4 h-4 text-slate-400"/>
+                            <span>Preconizado: {stats?.mediaPreconizado.toFixed(1) || '0.0'}%</span>
+                        </div>
+                        {stats?.ultimoLancamento && (
+                            <div className="flex items-center gap-2">
+                                <CalendarIcon className="w-4 h-4 text-slate-400"/>
+                                <span>Último: {formatDate(stats.ultimoLancamento)}</span>
+                            </div>
+                        )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-4">
             <EmptyState title="Nenhuma loja cadastrada" message="Use o formulário acima para adicionar sua primeira loja." />
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
        {isConfirmModalOpen && (
          <ConfirmationModal
             isOpen={isConfirmModalOpen}

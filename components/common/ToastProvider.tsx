@@ -14,7 +14,8 @@ export const ToastProvider = () => {
                 },
                 success: {
                     duration: 3000,
-                    theme: {
+                    // FIX: Replaced invalid 'theme' property with 'iconTheme' for styling toast icons.
+                    iconTheme: {
                         primary: 'green',
                         secondary: 'black',
                     },

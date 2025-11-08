@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Movimentacao } from '../types';
-import { formatCurrencyBRL, formatDate } from '../utils/helpers';
+import { formatDate } from '../utils/helpers';
 import { EditIcon, DeleteIcon, PlusIcon } from './icons';
 import MovimentacaoModal from './MovimentacaoModal';
 import { useAppContext } from '../contexts/AppContext';
@@ -12,11 +12,9 @@ const RegistrosPage: React.FC = () => {
   const { lojas, movimentacoes, addMovimentacao, updateMovimentacao, deleteMovimentacao } = useAppContext();
   
   const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+  const currentMonth = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2);
   
-  const [startDate, setStartDate] = useState(firstDayOfMonth);
-  const [endDate, setEndDate] = useState(lastDayOfMonth);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedLojaIds, setSelectedLojaIds] = useState<string[]>(['all']);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,15 +28,15 @@ const RegistrosPage: React.FC = () => {
   };
 
   const filteredMovimentacoes = useMemo(() => {
+    if (!selectedMonth) return [];
     return movimentacoes
       .filter(mov => {
-        const movDate = new Date(mov.dataISO);
-        const isDateInRange = movDate >= new Date(startDate) && movDate <= new Date(endDate);
+        const isDateInRange = mov.dataISO.startsWith(selectedMonth);
         const isLojaSelected = selectedLojaIds.includes('all') || selectedLojaIds.includes(mov.lojaId);
         return isDateInRange && isLojaSelected;
       })
       .sort((a, b) => new Date(b.dataISO).getTime() - new Date(a.dataISO).getTime());
-  }, [movimentacoes, startDate, endDate, selectedLojaIds]);
+  }, [movimentacoes, selectedMonth, selectedLojaIds]);
 
   const handleOpenNewModal = () => {
     setEditingMov(null);
@@ -55,19 +53,19 @@ const RegistrosPage: React.FC = () => {
     setIsConfirmModalOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if(movToDelete) {
-      deleteMovimentacao(movToDelete);
+      await deleteMovimentacao(movToDelete);
     }
     setIsConfirmModalOpen(false);
     setMovToDelete(null);
   };
 
-  const handleSave = (movData: Omit<Movimentacao, 'id'>) => {
+  const handleSave = async (movData: Omit<Movimentacao, 'id'>) => {
     if (editingMov) {
-      updateMovimentacao(editingMov.id, movData);
+      await updateMovimentacao(editingMov.id, movData);
     } else {
-      addMovimentacao(movData);
+      await addMovimentacao(movData);
     }
     setIsModalOpen(false);
   };
@@ -86,14 +84,10 @@ const RegistrosPage: React.FC = () => {
        <div className="p-4 bg-white border rounded-lg shadow-sm">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <h3 className="text-lg font-medium">Filtros</h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="startDateReg" className="block text-sm font-medium text-gray-700">Data Início</label>
-                <input type="date" id="startDateReg" value={startDate} onChange={e => setStartDate(e.target.value)} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
-              </div>
-              <div>
-                <label htmlFor="endDateReg" className="block text-sm font-medium text-gray-700">Data Fim</label>
-                <input type="date" id="endDateReg" value={endDate} onChange={e => setEndDate(e.target.value)} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
+                <label htmlFor="monthFilter" className="block text-sm font-medium text-gray-700">Período</label>
+                <input type="month" id="monthFilter" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
               </div>
               <div>
                 <label htmlFor="lojaFilter" className="block text-sm font-medium text-gray-700">Loja</label>
@@ -114,7 +108,9 @@ const RegistrosPage: React.FC = () => {
                 Novo Lançamento
             </button>
         </div>
-         {movimentacoes.length === 0 ? (
+         {movimentacoes.length === 0 && lojas.length === 0 ? (
+            <EmptyState title="Nenhum lançamento cadastrado" message="Cadastre uma loja e clique em 'Novo Lançamento' para adicionar o primeiro." />
+        ) : movimentacoes.length === 0 ? (
             <EmptyState title="Nenhum lançamento cadastrado" message="Clique em 'Novo Lançamento' para adicionar o primeiro." />
         ) : (
             <div className="overflow-x-auto">
@@ -123,7 +119,7 @@ const RegistrosPage: React.FC = () => {
                         <tr>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Data</th>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Loja</th>
-                            <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Faturamento (R$)</th>
+                            <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Faturamento (%)</th>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Preconizado (%)</th>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase">Ações</th>
                         </tr>
@@ -133,7 +129,7 @@ const RegistrosPage: React.FC = () => {
                             <tr key={mov.id}>
                                 <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{formatDate(mov.dataISO)}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{getLojaName(mov.lojaId)}</td>
-                                <td className="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap">{formatCurrencyBRL(mov.faturamento)}</td>
+                                <td className="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap">{mov.faturamento.toFixed(1)}%</td>
                                 <td className="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap">{mov.preconizado.toFixed(1)}%</td>
                                 <td className="px-6 py-4 text-sm font-medium text-center whitespace-nowrap">
                                     <div className="flex justify-center space-x-4">

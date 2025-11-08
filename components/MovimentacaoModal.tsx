@@ -24,7 +24,7 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
       setFormData({
         dataISO: movimentacao.dataISO,
         lojaId: movimentacao.lojaId,
-        faturamento: movimentacao.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+        faturamento: String(movimentacao.faturamento),
         preconizado: String(movimentacao.preconizado),
       });
     } else {
@@ -44,7 +44,7 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
   
   const validateAndSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const faturamentoNum = parseFloat(formData.faturamento.replace(/\./g, '').replace(',', '.'));
+    const faturamentoNum = parseFloat(formData.faturamento.replace(',', '.'));
     const preconizadoNum = parseFloat(formData.preconizado.replace(',', '.'));
 
     let hasError = false;
@@ -69,20 +69,10 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
       onSave({
         dataISO: formData.dataISO,
         lojaId: formData.lojaId,
-        faturamento: faturamentoNum,
+        faturamento: Math.round(faturamentoNum * 10) / 10,
         preconizado: Math.round(preconizadoNum * 10) / 10,
       });
     }
-  };
-  
-  const formatBRLInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value === '') {
-        setFormData(prev => ({...prev, faturamento: ''}));
-        return;
-    }
-    value = (Number(value) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    setFormData(prev => ({ ...prev, faturamento: value }));
   };
 
   if (!isOpen) return null;
@@ -108,8 +98,8 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
               </select>
             </div>
              <div>
-              <label htmlFor="faturamento" className="block text-sm font-medium text-gray-700">Faturamento (R$)</label>
-              <input type="text" name="faturamento" id="faturamento" value={formData.faturamento} onChange={formatBRLInput} required className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" placeholder="1.234,56"/>
+              <label htmlFor="faturamento" className="block text-sm font-medium text-gray-700">Faturamento (%)</label>
+              <input type="text" name="faturamento" id="faturamento" value={formData.faturamento} onChange={handleChange} required className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" placeholder="95,2"/>
               {errors.faturamento && <p className="mt-1 text-xs text-red-500">{errors.faturamento}</p>}
             </div>
             <div>
