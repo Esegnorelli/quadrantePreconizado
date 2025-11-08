@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Movimentacao } from '../types';
 import { useAppContext } from '../contexts/AppContext';
 
@@ -15,9 +15,11 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
     dataISO: new Date().toISOString().split('T')[0],
     lojaId: '',
     faturamento: '',
-    preconizado: '',
+    padronizacao: '',
+    layout: '',
+    cultura: '',
   });
-  const [errors, setErrors] = useState({ faturamento: '', preconizado: '' });
+  const [errors, setErrors] = useState({ faturamento: '', padronizacao: '', layout: '', cultura: '' });
 
   useEffect(() => {
     if (movimentacao) {
@@ -25,14 +27,18 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
         dataISO: movimentacao.dataISO,
         lojaId: movimentacao.lojaId,
         faturamento: String(movimentacao.faturamento),
-        preconizado: String(movimentacao.preconizado),
+        padronizacao: String(movimentacao.padronizacao || ''),
+        layout: String(movimentacao.layout || ''),
+        cultura: String(movimentacao.cultura || ''),
       });
     } else {
        setFormData({
         dataISO: new Date().toISOString().split('T')[0],
         lojaId: lojas.length > 0 ? lojas[0].id : '',
         faturamento: '',
-        preconizado: '',
+        padronizacao: '',
+        layout: '',
+        cultura: '',
       });
     }
   }, [movimentacao, lojas, isOpen]);
@@ -41,23 +47,47 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  const calculatedPreconizado = useMemo(() => {
+    const padronizacaoNum = parseFloat(formData.padronizacao.replace(',', '.')) || 0;
+    const layoutNum = parseFloat(formData.layout.replace(',', '.')) || 0;
+    const culturaNum = parseFloat(formData.cultura.replace(',', '.')) || 0;
+    
+    const values = [padronizacaoNum, layoutNum, culturaNum].filter(v => formData.padronizacao || formData.layout || formData.cultura ? v >= 0 : v > 0);
+    const count = values.length || 1;
+    
+    const average = (padronizacaoNum + layoutNum + culturaNum) / count;
+    return average;
+  }, [formData.padronizacao, formData.layout, formData.cultura]);
   
   const validateAndSave = (e: React.FormEvent) => {
     e.preventDefault();
     const faturamentoNum = parseFloat(formData.faturamento.replace(',', '.'));
-    const preconizadoNum = parseFloat(formData.preconizado.replace(',', '.'));
+    const padronizacaoNum = parseFloat(formData.padronizacao.replace(',', '.'));
+    const layoutNum = parseFloat(formData.layout.replace(',', '.'));
+    const culturaNum = parseFloat(formData.cultura.replace(',', '.'));
 
     let hasError = false;
-    const newErrors = { faturamento: '', preconizado: '' };
+    const newErrors = { faturamento: '', padronizacao: '', layout: '', cultura: '' };
 
     if (isNaN(faturamentoNum) || faturamentoNum < 0) {
         newErrors.faturamento = 'Valor inválido';
         hasError = true;
     }
-    if (isNaN(preconizadoNum) || preconizadoNum < 0 || preconizadoNum > 100) {
-        newErrors.preconizado = 'Valor deve ser entre 0 e 100';
+    
+    if (isNaN(padronizacaoNum) || padronizacaoNum < 0 || padronizacaoNum > 100) {
+        newErrors.padronizacao = 'Valor deve ser entre 0 e 100';
         hasError = true;
     }
+    if (isNaN(layoutNum) || layoutNum < 0 || layoutNum > 100) {
+        newErrors.layout = 'Valor deve ser entre 0 e 100';
+        hasError = true;
+    }
+    if (isNaN(culturaNum) || culturaNum < 0 || culturaNum > 100) {
+        newErrors.cultura = 'Valor deve ser entre 0 e 100';
+        hasError = true;
+    }
+
     if (!formData.lojaId) {
         alert('Selecione uma loja.');
         hasError = true;
@@ -70,7 +100,10 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
         dataISO: formData.dataISO,
         lojaId: formData.lojaId,
         faturamento: Math.round(faturamentoNum * 10) / 10,
-        preconizado: Math.round(preconizadoNum * 10) / 10,
+        padronizacao: Math.round(padronizacaoNum * 10) / 10,
+        layout: Math.round(layoutNum * 10) / 10,
+        cultura: Math.round(culturaNum * 10) / 10,
+        preconizado: Math.round(calculatedPreconizado * 100) / 100,
       });
     }
   };
@@ -103,9 +136,23 @@ const MovimentacaoModal: React.FC<MovimentacaoModalProps> = ({ isOpen, onClose, 
               {errors.faturamento && <p className="mt-1 text-xs text-red-500">{errors.faturamento}</p>}
             </div>
             <div>
-              <label htmlFor="preconizado" className="block text-sm font-medium text-gray-700">Preconizado (%)</label>
-              <input type="text" name="preconizado" id="preconizado" value={formData.preconizado} onChange={handleChange} required className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" placeholder="85,5"/>
-              {errors.preconizado && <p className="mt-1 text-xs text-red-500">{errors.preconizado}</p>}
+              <label htmlFor="padronizacao" className="block text-sm font-medium text-gray-700">Padronização Processos (%)</label>
+              <input type="text" name="padronizacao" id="padronizacao" value={formData.padronizacao} onChange={handleChange} required className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" placeholder="80"/>
+              {errors.padronizacao && <p className="mt-1 text-xs text-red-500">{errors.padronizacao}</p>}
+            </div>
+             <div>
+              <label htmlFor="layout" className="block text-sm font-medium text-gray-700">Layout (%)</label>
+              <input type="text" name="layout" id="layout" value={formData.layout} onChange={handleChange} required className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" placeholder="80"/>
+              {errors.layout && <p className="mt-1 text-xs text-red-500">{errors.layout}</p>}
+            </div>
+             <div>
+              <label htmlFor="cultura" className="block text-sm font-medium text-gray-700">Cultura (%)</label>
+              <input type="text" name="cultura" id="cultura" value={formData.cultura} onChange={handleChange} required className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" placeholder="60"/>
+              {errors.cultura && <p className="mt-1 text-xs text-red-500">{errors.cultura}</p>}
+            </div>
+            <div className="sm:col-span-2 p-3 bg-slate-100 rounded-md text-center">
+              <p className="text-sm text-gray-500">Média Preconizado Calculada</p>
+              <p className="text-2xl font-bold text-primary">{calculatedPreconizado.toFixed(2)}%</p>
             </div>
           </div>
           <div className="pt-4 text-right space-x-2">

@@ -144,7 +144,7 @@ const LojaPage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                             <ChartBarIcon className="w-4 h-4 text-slate-400"/>
-                            <span>Preconizado: {stats?.mediaPreconizado.toFixed(1) || '0.0'}%</span>
+                            <span>Média Preconizado: {stats?.mediaPreconizado.toFixed(2) || '0.00'}%</span>
                         </div>
                         {stats?.ultimoLancamento && (
                             <div className="flex items-center gap-2">

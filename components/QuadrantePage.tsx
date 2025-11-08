@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceArea,
-  ResponsiveContainer, Legend, Label
+  ResponsiveContainer, Legend, Label, LabelList
 } from 'recharts';
 import { stringToColor } from '../utils/helpers';
 import { useAppContext } from '../contexts/AppContext';
@@ -16,7 +16,7 @@ const CustomTooltip = ({ active, payload }: any) => {
       <div className="relative z-50 p-3 text-sm bg-white border rounded-lg shadow-lg">
         <p className="font-bold" style={{ color: loja.fill }}>{data.nome}</p>
         <p>Faturamento Médio: {data.faturamento.toFixed(1)}%</p>
-        <p>Preconizado Médio: {data.preconizado.toFixed(1)}%</p>
+        <p>Média Preconizado: {data.preconizado.toFixed(2)}%</p>
         <p>Lançamentos: {data.count}</p>
       </div>
     );
@@ -177,7 +177,7 @@ const QuadrantePage: React.FC = () => {
               <div className="space-y-4">
                   <h4 className="font-bold text-md">Metas</h4>
                   <div>
-                      <label htmlFor="metaPreconizado" className="block text-sm font-medium text-gray-700">Meta Preconizado (%)</label>
+                      <label htmlFor="metaPreconizado" className="block text-sm font-medium text-gray-700">Meta Média Preconizado (%)</label>
                       <input type="number" name="metaPreconizado" id="metaPreconizado" value={metaPreconizado} min="0" max="100" step="0.1" onChange={handleSettingsChange} className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary sm:text-sm" />
                   </div>
                   <div>
@@ -196,7 +196,7 @@ const QuadrantePage: React.FC = () => {
                       </div>
                       <div className="p-4 bg-slate-100 rounded-lg">
                           <p className="text-sm text-gray-500">Média Preconizado</p>
-                          <p className="text-2xl font-semibold">{summaryData.mediaPreconizado.toFixed(1)}%</p>
+                          <p className="text-2xl font-semibold">{summaryData.mediaPreconizado.toFixed(2)}%</p>
                       </div>
                   </div>
                   <h5 className="font-medium text-md">Distribuição nos Quadrantes</h5>
@@ -238,11 +238,11 @@ const QuadrantePage: React.FC = () => {
       {/* Gráfico */}
       <div className="p-6 bg-white rounded-xl shadow-md h-[calc(100vh-280px)] min-h-[500px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 50 }}>
+          <ScatterChart margin={{ top: 20, right: 80, bottom: 40, left: 50 }}>
             <CartesianGrid strokeDasharray="3 3" />
             
-            <XAxis type="number" dataKey="preconizado" name="Preconizado" unit="%" domain={[0, 100]}>
-                <Label value="Preconizado Médio (%)" offset={-25} position="insideBottom" />
+            <XAxis type="number" dataKey="preconizado" name="Média Preconizado" unit="%" domain={[0, 100]}>
+                <Label value="Média Preconizado (%)" offset={-25} position="insideBottom" />
             </XAxis>
             <YAxis type="number" dataKey="faturamento" name="Faturamento" unit="%" domain={[0, Math.ceil(yDomainMax / 10) * 10]}>
                  <Label value="Faturamento Médio (%)" angle={-90} offset={-35} position="insideLeft" style={{ textAnchor: 'middle' }} />
@@ -270,7 +270,9 @@ const QuadrantePage: React.FC = () => {
                     data={chartData.filter(d => d.lojaId === loja.id)}
                     fill={stringToColor(loja.id)}
                     shape="circle"
-                />
+                >
+                  <LabelList dataKey="nome" position="right" style={{ fontSize: '10px', fill: 'rgba(0, 0, 0, 0.8)' }} />
+                </Scatter>
             ))}
           </ScatterChart>
         </ResponsiveContainer>

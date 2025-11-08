@@ -127,7 +127,7 @@ const RegistrosPage: React.FC = () => {
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Data</th>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Loja</th>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Faturamento (%)</th>
-                            <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Preconizado (%)</th>
+                            <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Média Preconizado (%)</th>
                             <th scope="col" className="px-6 py-3 text-xs font-medium tracking-wider text-center text-gray-500 uppercase">Ações</th>
                         </tr>
                     </thead>
@@ -137,7 +137,7 @@ const RegistrosPage: React.FC = () => {
                                 <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{formatDate(mov.dataISO)}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{getLojaName(mov.lojaId)}</td>
                                 <td className="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap">{mov.faturamento.toFixed(1)}%</td>
-                                <td className="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap">{mov.preconizado.toFixed(1)}%</td>
+                                <td className="px-6 py-4 text-sm text-right text-gray-500 whitespace-nowrap">{mov.preconizado.toFixed(2)}%</td>
                                 <td className="px-6 py-4 text-sm font-medium text-center whitespace-nowrap">
                                     <div className="flex justify-center space-x-4">
                                         <button onClick={() => handleOpenEditModal(mov)} className="text-primary hover:text-primary-dark transition-colors duration-200"><EditIcon className="w-5 h-5"/></button>

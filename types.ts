@@ -14,6 +14,9 @@ export interface Movimentacao {
   lojaId: string;
   faturamento: number;
   preconizado: number;
+  padronizacao: number;
+  layout: number;
+  cultura: number;
 }
 
 export interface Settings {
